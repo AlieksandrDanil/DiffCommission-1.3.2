@@ -3,13 +3,14 @@ const val COMMISSION_MASTER_MAESTRO_ADDITION = 20_00
 const val COMMISSION_VISA_MIR_PCT_FACTOR = 75
 const val COMMISSION_VISA_MIR_ADDITION = 35_00
 
-const val LIMIT_MASTER_MAESTRO_TRANSFER_SUM_MAX = 75_000_00
+const val NOTCOMMISSION_MASTER_MAESTRO_MONTH_TRANSFER_SUM_MAX = 75_000_00
+
 const val LIMIT_VKPAY_ONETIME_TRANSFER_SUM_MAX = 15_000_00
 const val LIMIT_VKPAY_MONTH_TRANSFER_SUM_MAX = 40_000_00
 const val LIMIT_ONE_CARD_DAY_TRANSFER_SUM_MAX = 150_000_00
 const val LIMIT_ONE_CARD_MONTH_TRANSFER_SUM_MAX = 600_000_00
 
-enum class CardTypes {
+enum class CardType {
     Visa, Mir, VkPay, MasterCard, Maestro
 }
 
@@ -23,34 +24,58 @@ fun main() {
     print("Введите одним числом номер соответствующий карте из списка:  0 - Visa; 1 - Mir; 2 - VkPay; 3 - MasterCard; 4 - Maestro: ")
     val cardID = readLine()?.toInt()?: return
 
-    val cardType: CardTypes = when(cardID) {
-        0 -> CardTypes.Visa
-        1 -> CardTypes.Mir
-        2 -> CardTypes.VkPay
-        3 -> CardTypes.MasterCard
-        4 -> CardTypes.Maestro
-        else -> CardTypes.VkPay
+    val cardType: CardType = when(cardID) {
+        0 -> CardType.Visa
+        1 -> CardType.Mir
+        2 -> CardType.VkPay
+        3 -> CardType.MasterCard
+        4 -> CardType.Maestro
+        else -> CardType.VkPay
     }
 
+    val checkLimit = isLimitExceeded(moneyTransferAmount, moneyForMonth, cardType)
     val totalCommission = calculateCommission(moneyTransferAmount, moneyForMonth, cardType)
-    if (totalCommission == -1) println("Превышение установленного лимита по карте \"$cardType\"!") else
+    val totalSum = moneyTransferAmount + totalCommission
 
-    println("Итоговая сумма перевода $moneyTransferAmount коп. по карте \"$cardType\" с комиссией $totalCommission коп." +
-            " составит: = ${moneyTransferAmount + totalCommission} копеек")
+    if (checkLimit) println("Превышение установленного лимита по карте \"$cardType\"!") else
+    println("Итоговая сумма перевода $moneyTransferAmount коп. по карте \"$cardType\" с комиссией $totalCommission коп. составит: = $totalSum копеек")
 }
 
-fun calculateCommission(moneyTransferAmount: Int, previousSumForMonth: Int = 0, cardType: CardTypes = CardTypes.VkPay): Int {
-    return if (moneyTransferAmount <= LIMIT_ONE_CARD_DAY_TRANSFER_SUM_MAX && (moneyTransferAmount + previousSumForMonth) <= LIMIT_ONE_CARD_MONTH_TRANSFER_SUM_MAX)
-        when (cardType) {
-            CardTypes.Visa, CardTypes.Mir -> if (moneyTransferAmount * COMMISSION_VISA_MIR_PCT_FACTOR / 10_000 <= COMMISSION_VISA_MIR_ADDITION)
-                COMMISSION_VISA_MIR_ADDITION else (moneyTransferAmount * COMMISSION_VISA_MIR_PCT_FACTOR / 10_000)
+fun calculateCommission(
+    moneyTransferAmount: Int,
+    previousSumForMonth: Int = 0,
+    cardType: CardType = CardType.VkPay
+): Int = when (cardType) {
+    CardType.Visa, CardType.Mir ->
+        if (moneyTransferAmount * COMMISSION_VISA_MIR_PCT_FACTOR / 10_000 <= COMMISSION_VISA_MIR_ADDITION)
+            COMMISSION_VISA_MIR_ADDITION
+        else (moneyTransferAmount * COMMISSION_VISA_MIR_PCT_FACTOR / 10_000)
 
-            CardTypes.VkPay -> if (moneyTransferAmount <= LIMIT_VKPAY_ONETIME_TRANSFER_SUM_MAX
-                && (moneyTransferAmount + previousSumForMonth) <= LIMIT_VKPAY_MONTH_TRANSFER_SUM_MAX) 0 else -1
+    CardType.VkPay -> 0
 
-            CardTypes.MasterCard, CardTypes.Maestro -> if ((moneyTransferAmount + previousSumForMonth) <= LIMIT_MASTER_MAESTRO_TRANSFER_SUM_MAX)
-                (moneyTransferAmount * COMMISSION_MASTER_MAESTRO_PCT_FACTOR / 10_000) + COMMISSION_MASTER_MAESTRO_ADDITION else -1
+    CardType.MasterCard, CardType.Maestro ->
+        if ((moneyTransferAmount + previousSumForMonth) >= NOTCOMMISSION_MASTER_MAESTRO_MONTH_TRANSFER_SUM_MAX)
+            (moneyTransferAmount * COMMISSION_MASTER_MAESTRO_PCT_FACTOR / 10_000) + COMMISSION_MASTER_MAESTRO_ADDITION
+        else
+            0
+}
+
+fun isLimitExceeded(
+    moneyTransferAmount: Int,
+    previousSumForMonth: Int = 0,
+    cardType: CardType = CardType.VkPay
+): Boolean {
+    return if (moneyTransferAmount > LIMIT_ONE_CARD_DAY_TRANSFER_SUM_MAX ||
+        (moneyTransferAmount + previousSumForMonth) > LIMIT_ONE_CARD_MONTH_TRANSFER_SUM_MAX
+    ) {
+        true
+    } else {
+        if (cardType == CardType.VkPay) {
+            if (moneyTransferAmount > LIMIT_VKPAY_ONETIME_TRANSFER_SUM_MAX
+                || (moneyTransferAmount + previousSumForMonth) > LIMIT_VKPAY_MONTH_TRANSFER_SUM_MAX
+            )
+                return true
         }
-    else
-        -1
+        false
+    }
 }
