@@ -16,15 +16,15 @@ enum class CardType {
 
 fun main() {
     print("Введите сумму в копейках, которую вы хотите перевести: ")
-    val moneyTransferAmount = readLine()?.toInt()?: return
+    val moneyTransferAmount = readLine()?.toInt() ?: return
 
     print("Введите общую сумму переводов в копейках за месяц: ")
-    val moneyForMonth = readLine()?.toInt()?: return
+    val moneyForMonth = readLine()?.toInt() ?: return
 
     print("Введите одним числом номер соответствующий карте из списка:  0 - Visa; 1 - Mir; 2 - VkPay; 3 - MasterCard; 4 - Maestro: ")
-    val cardID = readLine()?.toInt()?: return
+    val cardID = readLine()?.toInt() ?: return
 
-    val cardType: CardType = when(cardID) {
+    val cardType: CardType = when (cardID) {
         0 -> CardType.Visa
         1 -> CardType.Mir
         2 -> CardType.VkPay
@@ -34,11 +34,13 @@ fun main() {
     }
 
     val checkLimit = isLimitExceeded(moneyTransferAmount, moneyForMonth, cardType)
-    val totalCommission = calculateCommission(moneyTransferAmount, moneyForMonth, cardType)
-    val totalSum = moneyTransferAmount + totalCommission
-
-    if (checkLimit) println("Превышение установленного лимита по карте \"$cardType\"!") else
-    println("Итоговая сумма перевода $moneyTransferAmount коп. по карте \"$cardType\" с комиссией $totalCommission коп. составит: = $totalSum копеек")
+    if (checkLimit)
+        println("Превышение установленного лимита по карте \"$cardType\"!")
+    else {
+        val totalCommission = calculateCommission(moneyTransferAmount, moneyForMonth, cardType)
+        val totalSum = moneyTransferAmount + totalCommission
+        println("Итоговая сумма перевода $moneyTransferAmount коп. по карте \"$cardType\" с комиссией $totalCommission коп. составит: = $totalSum копеек")
+    }
 }
 
 fun calculateCommission(
@@ -46,10 +48,13 @@ fun calculateCommission(
     previousSumForMonth: Int = 0,
     cardType: CardType = CardType.VkPay
 ): Int = when (cardType) {
-    CardType.Visa, CardType.Mir ->
-        if (moneyTransferAmount * COMMISSION_VISA_MIR_PCT_FACTOR / 10_000 <= COMMISSION_VISA_MIR_ADDITION)
+    CardType.Visa, CardType.Mir -> {
+        val calcVisaMirCommission = moneyTransferAmount * COMMISSION_VISA_MIR_PCT_FACTOR / 10_000
+        if (calcVisaMirCommission <= COMMISSION_VISA_MIR_ADDITION)
             COMMISSION_VISA_MIR_ADDITION
-        else (moneyTransferAmount * COMMISSION_VISA_MIR_PCT_FACTOR / 10_000)
+        else
+            calcVisaMirCommission
+    }
 
     CardType.VkPay -> 0
 
